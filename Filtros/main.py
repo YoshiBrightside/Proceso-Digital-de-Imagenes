@@ -93,7 +93,7 @@ class UniversalImageFilterApplier:
         self.filters = fl.get_filters()
         self.filter_btns = [None for _ in range(len(self.filters))]
         for f in range(len(self.filters)):
-            self.filter_btns[f] = Button(self.filter_frame, width = '30', height='5',
+            self.filter_btns[f] = Button(self.filter_frame, width = '30', height='2',
                         text =self.filters[f].name,
                         command = lambda f=f: self.set_selected_filter(self.filters[f])) # https://stackoverflow.com/a/10865170
             self.filter_btns[f].pack()

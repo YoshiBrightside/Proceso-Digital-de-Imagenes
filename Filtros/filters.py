@@ -1,3 +1,5 @@
+import copy
+
 class StringVar():
   '''
   class StringVar just so we can skip using horrible tkinter's StringVar class
@@ -76,6 +78,107 @@ class Filter:
       x += m
       y = 0
 
+  def high_contrast(self, image, options=None):
+    self.inverse(image)
+    self.inverse(image)
+
+  def inverse(self, image, options=None):
+    arr = image.load()
+    for x in range(image.width):
+      for y in range(image.height):
+        if arr[x, y][0] > 127 and arr[x, y][1] > 127 and arr[x, y][2] > 127:
+          arr[x, y] = (0, 0, 0)
+        else:
+          arr[x, y] = (255, 255, 255)
+
+  def rgb_filter(self, image, options={'channel':StringVar('Red')}):
+    arr = image.load()
+    for x in range(image.width):
+      for y in range(image.height):
+        if options['channel'].get() == 'Red':
+          arr[x, y] = (arr[x, y][0], 0, 0)
+        if options['channel'].get() == 'Green':
+          arr[x, y] = (0, arr[x, y][1], 0)
+        if options['channel'].get() == 'Blue':
+          arr[x, y] = (0, 0, arr[x, y][2])
+
+  def convolusion(self, image, matrix):
+    img_copy = copy.deepcopy(image)
+    arr = image.load()
+    copy_arr = img_copy.load()
+    for x in range(image.width):
+      for y in range(image.height):
+        new_value = [0, 0, 0]
+        pixel_count = 0
+        for mx in range(len(matrix)):
+          for my in range(len(matrix)):
+            cur_pixel = [x+mx-(len(matrix)//2), y+my-(len(matrix)//2)]
+            if (matrix[mx][my] and
+                cur_pixel[0] < image.width and cur_pixel[0] >= 0 and
+                cur_pixel[1] < image.height and cur_pixel[1] >= 0):
+              new_value[0] += copy_arr[cur_pixel[0], cur_pixel[1]][0]*matrix[mx][my]
+              new_value[1] += copy_arr[cur_pixel[0], cur_pixel[1]][1]*matrix[mx][my]
+              new_value[2] += copy_arr[cur_pixel[0], cur_pixel[1]][2]*matrix[mx][my]
+              pixel_count += abs(matrix[mx][my])
+        arr[x, y] = (int(new_value[0]/pixel_count),
+                     int(new_value[1]/pixel_count),
+                     int(new_value[2]/pixel_count))
+        pixel_count = 0
+    
+
+  def blur(self, image, options={'size':StringVar('3x3')}):
+    size = get_matrix_size(options['size'].get())
+    if size == 3:
+      matrix =[[0, .2, 0],
+              [.2, .2, .2],
+              [0, .2, 0]]
+    else:
+      matrix =[[0, 0, 1, 0, 0],
+              [0, 1, 1, 1, 0],
+              [1, 1, 1, 1, 1],
+              [0, 1, 1, 1, 0],
+              [0, 0, 1, 0, 0]]
+    self.convolusion(image, matrix)
+
+  def motion_blur(self, image, options={'size':StringVar('9x9')}):
+    matrix =[[1, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 1, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 1, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 1, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 1, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 1, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 1, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 1, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 1]]
+    self.convolusion(image, matrix)
+
+  def find_edges(self, image, options={'size':StringVar('5x5')}):
+    matrix =[[-1, 0, 0, 0, 0],
+             [ 0, -2, 0, 0, 0],
+             [ 0, 0, 6, 0, 0],
+             [ 0, 0, 0, -2, 0],
+             [ 0, 0, 0, 0, -1]]
+    self.convolusion(image, matrix)
+    return
+
+  def sharpen(self, image, options={'size':StringVar('3x3')}):
+    matrix =[[-1, -1, -1],
+             [-1, 9, -1],
+             [-1, -1, -1]]
+    self.convolusion(image, matrix)
+    return
+
+  def emboss(self, image, options={'size':StringVar('5x5')}):
+    matrix =[[-1, -1, -1, -1, 0],
+             [-1, -1, -1, 0, -1],
+             [-1, -1, 0, -1, -1],
+             [-1, 0, -1, -1, -1],
+             [ 0, -1, -1, -1, -1]]
+    self.convolusion(image, matrix)
+    return
+
+def get_matrix_size(s):
+  return int(s.split('x')[0])
 
 def get_filters():
   '''
@@ -99,6 +202,34 @@ def get_filters():
                         'test_description',
                         {'size':{'style':'dropdown',
                                  'values':['10','20','30']}}))
+  filters.append(Filter('high_contrast',
+                        'test', {}))
+  filters.append(Filter('inverse',
+                        'test', {}))
+  filters.append(Filter('rgb_filter',
+                        'test',
+                        {'channel':{'style':'dropdown',
+                                    'values':['Red','Green','Blue']}}))
+  filters.append(Filter('blur',
+                        'test',
+                        {'size':{'style':'dropdown',
+                                 'values':['3x3', '5x5']}}))
+  filters.append(Filter('motion_blur',
+                        'test',
+                        {'size':{'style':'dropdown',
+                                 'values':['9x9']}}))
+  filters.append(Filter('find_edges',
+                        'test',
+                        {'size':{'style':'dropdown',
+                                 'values':['5x5']}}))
+  filters.append(Filter('sharpen',
+                        'test',
+                        {'size':{'style':'dropdown',
+                                 'values':['3x3']}}))
+  filters.append(Filter('emboss',
+                        'test',
+                        {'size':{'style':'dropdown',
+                                 'values':['5x5']}}))
   return filters
 
 if __name__ == '__main__':
