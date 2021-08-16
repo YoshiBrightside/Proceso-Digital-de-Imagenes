@@ -47,7 +47,7 @@ class UniversalImageFilterApplier:
         self.right_canvas.pack(fill="both", expand = True)
         self.left_image = Image.open('img/bunny1.jpeg')
         self.right_image = Image.open('img/alpaca1.jpeg')
-        # Create a button and place it into the window
+        # Create button and options
         self.apply_filter_btn = Button(self.option_frame, width = '50', height='5',
                         text ='Apply filter',
                         command = self.update_right_image)
@@ -58,9 +58,9 @@ class UniversalImageFilterApplier:
         self.open_image_btn.pack()
         # We add the filters, yay
         self.load_filters()
-        self.filter_btns
-        
-                
+        self.selected_filter = None
+        self.filter_options = []
+        self.selected_options = {}
         # Tkinter has a trash managemnt bug, we store the images to provent it
         self.anti_trash_system = [ImageTk.PhotoImage(self.left_image.resize((self.left_canvas.winfo_width(),400), Image.ANTIALIAS)),
                                   ImageTk.PhotoImage(self.right_image.resize((self.right_canvas.winfo_width(),400), Image.ANTIALIAS))]
@@ -68,13 +68,34 @@ class UniversalImageFilterApplier:
         self.right_image_changer = self.right_canvas.create_image(0, 0, anchor=NW, image=self.anti_trash_system[1])
         self.window.mainloop()
 
+    def set_selected_filter(self, new_filter):
+        self.clear_filter_options()
+        self.selected_filter = new_filter
+        self.display_filter_options()
+
+    def clear_filter_options(self):
+        for o in self.filter_options:
+            if o:
+                o.destroy()
+        self.selected_options.clear()
+        self.filter_options.clear()
+
+    def display_filter_options(self):
+        for o in (self.selected_filter.options.keys()):
+            self.selected_options[o] = StringVar()
+            if self.selected_filter.options[o]['style'] == 'dropdown':
+                self.filter_options.append(OptionMenu(self.option_frame, self.selected_options[o], *self.selected_filter.options[o]['values']))
+            if self.selected_filter.options[o]['style'] == 'value':
+                continue
+            self.filter_options[-1].pack()
+
     def load_filters(self):
         self.filters = fl.get_filters()
         self.filter_btns = [None for _ in range(len(self.filters))]
         for f in range(len(self.filters)):
             self.filter_btns[f] = Button(self.filter_frame, width = '30', height='5',
                         text =self.filters[f].name,
-                        command = lambda f=f: fl.apply_filter(self.filters[f].name, self.left_image, self.filters[f].options)) # https://stackoverflow.com/a/10865170
+                        command = lambda f=f: self.set_selected_filter(self.filters[f])) # https://stackoverflow.com/a/10865170
             self.filter_btns[f].pack()
 
     def update_left_image(self, image):
@@ -85,10 +106,10 @@ class UniversalImageFilterApplier:
         self.anti_trash_system[0] = ImageTk.PhotoImage(image.resize((self.left_canvas.winfo_width(),self.left_canvas.winfo_height()), Image.ANTIALIAS))
         self.left_canvas.itemconfigure(self.left_image_changer, image = self.anti_trash_system[0])
 
-    def update_right_image(self, filter=None):
+    def update_right_image(self):
         modded_image = self.left_image
-        if filter:
-            print('Filter')
+        if self.selected_filter:
+            self.selected_filter.apply_filter(self.selected_filter.name, self.left_image, self.selected_options)
         self.right_image = modded_image
         self.anti_trash_system[1] = ImageTk.PhotoImage(modded_image.resize((self.right_canvas.winfo_width(),self.left_canvas.winfo_height()), Image.ANTIALIAS))
         self.right_canvas.itemconfigure(self.right_image_changer, image = self.anti_trash_system[1])
