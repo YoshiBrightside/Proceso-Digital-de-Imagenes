@@ -1,4 +1,5 @@
 import copy
+from PIL import Image, ImageFont, ImageDraw
 
 class StringVar():
   '''
@@ -22,6 +23,9 @@ class Filter:
     except AttributeError:
       return image
     modded_image = method(self, image, options)
+    if modded_image:
+      print('saving...')
+      modded_image.save('.temp.jpeg')
 
   def gray_tone(self, image, options={'filter_type':StringVar('RGB')}):
     arr = image.load()
@@ -47,6 +51,7 @@ class Filter:
         if options['filter_type'].get() == 'B':
           grey = arr[x, y][2]
         arr[x, y] = (grey, grey, grey)
+    return image
 
   def brightness(self, image, options={'quantity':StringVar('10')}):
     arr = image.load()
@@ -56,6 +61,7 @@ class Filter:
         arr[x, y] = (min(max(arr[x, y][0] + modifier, 0), 255),
                      min(max(arr[x, y][1] + modifier, 0), 255),
                      min(max(arr[x, y][2] + modifier, 0), 255))
+    return image
 
   def mosaic(self, image, options={'size':StringVar('10')}):
     arr = image.load()
@@ -77,10 +83,12 @@ class Filter:
         r, g, b = 0, 0, 0
       x += m
       y = 0
+    return image
 
   def high_contrast(self, image, options=None):
     self.inverse(image)
     self.inverse(image)
+    return image
 
   def inverse(self, image, options=None):
     arr = image.load()
@@ -90,6 +98,7 @@ class Filter:
           arr[x, y] = (0, 0, 0)
         else:
           arr[x, y] = (255, 255, 255)
+    return image
 
   def rgb_filter(self, image, options={'channel':StringVar('Red')}):
     arr = image.load()
@@ -101,15 +110,15 @@ class Filter:
           arr[x, y] = (0, arr[x, y][1], 0)
         if options['channel'].get() == 'Blue':
           arr[x, y] = (0, 0, arr[x, y][2])
+    return image
 
-  def convolusion(self, image, matrix):
+  def convolusion(self, image, matrix, factor= 1, bias=0):
     img_copy = copy.deepcopy(image)
     arr = image.load()
     copy_arr = img_copy.load()
     for x in range(image.width):
       for y in range(image.height):
         new_value = [0, 0, 0]
-        pixel_count = 0
         for mx in range(len(matrix)):
           for my in range(len(matrix)):
             cur_pixel = [x+mx-(len(matrix)//2), y+my-(len(matrix)//2)]
@@ -119,11 +128,14 @@ class Filter:
               new_value[0] += copy_arr[cur_pixel[0], cur_pixel[1]][0]*matrix[mx][my]
               new_value[1] += copy_arr[cur_pixel[0], cur_pixel[1]][1]*matrix[mx][my]
               new_value[2] += copy_arr[cur_pixel[0], cur_pixel[1]][2]*matrix[mx][my]
-              pixel_count += abs(matrix[mx][my])
-        arr[x, y] = (int(new_value[0]/pixel_count),
-                     int(new_value[1]/pixel_count),
-                     int(new_value[2]/pixel_count))
-        pixel_count = 0
+        try:
+          arr[x, y] = (int(new_value[0]*factor)+bias,
+                      int(new_value[1]*factor)+bias,
+                      int(new_value[2]*factor)+bias)
+        except Exception:
+          print(arr[x, y], x, y)
+    image.save('.temp.jpeg')
+    return image
     
 
   def blur(self, image, options={'size':StringVar('3x3')}):
@@ -132,13 +144,15 @@ class Filter:
       matrix =[[0, .2, 0],
               [.2, .2, .2],
               [0, .2, 0]]
+      factor = 1
     else:
       matrix =[[0, 0, 1, 0, 0],
               [0, 1, 1, 1, 0],
               [1, 1, 1, 1, 1],
               [0, 1, 1, 1, 0],
               [0, 0, 1, 0, 0]]
-    self.convolusion(image, matrix)
+      factor = 1/13
+    self.convolusion(image, matrix, factor=factor)
 
   def motion_blur(self, image, options={'size':StringVar('9x9')}):
     matrix =[[1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -150,7 +164,7 @@ class Filter:
              [0, 0, 0, 0, 0, 0, 1, 0, 0],
              [0, 0, 0, 0, 0, 0, 0, 1, 0],
              [0, 0, 0, 0, 0, 0, 0, 0, 1]]
-    self.convolusion(image, matrix)
+    self.convolusion(image, matrix, factor=(1/9))
 
   def find_edges(self, image, options={'size':StringVar('5x5')}):
     matrix =[[-1, 0, 0, 0, 0],
@@ -158,24 +172,37 @@ class Filter:
              [ 0, 0, 6, 0, 0],
              [ 0, 0, 0, -2, 0],
              [ 0, 0, 0, 0, -1]]
-    self.convolusion(image, matrix)
-    return
+    self.convolusion(image, matrix, factor=(1/5))
 
   def sharpen(self, image, options={'size':StringVar('3x3')}):
     matrix =[[-1, -1, -1],
              [-1, 9, -1],
              [-1, -1, -1]]
     self.convolusion(image, matrix)
-    return
 
   def emboss(self, image, options={'size':StringVar('5x5')}):
     matrix =[[-1, -1, -1, -1, 0],
-             [-1, -1, -1, 0, -1],
-             [-1, -1, 0, -1, -1],
-             [-1, 0, -1, -1, -1],
-             [ 0, -1, -1, -1, -1]]
-    self.convolusion(image, matrix)
-    return
+             [-1, -1, -1, 0, 1],
+             [-1, -1, 0, 1, 1],
+             [-1, 0, 1, 1, 1],
+             [ 0, 1, 1, 1, 1]]
+    self.convolusion(image, matrix, bias=128)
+
+  def watermark(self,
+                image,
+                options={'text':StringVar('text'),
+                         'font_size':StringVar('20'),
+                         'transparency':StringVar('130')}):
+    # print(options['text'].get(), options['font_size'].get(), options['transparency'].get())
+    txt_img = Image.new('RGBA', image.size, (255,255,255,0))
+    draw = ImageDraw.Draw(txt_img)
+    text = 'This filter is on demo :)'#options['text'].get()
+    transparency = 120 #int(options['transparency'].get())
+    font = ImageFont.truetype("Gidole-Regular.ttf",  30) #int(options['font_size'].get()))
+    draw.text((10,10), text, font=font, fill=(255,255,255, transparency))
+    image = Image.alpha_composite(image.convert('RGBA'), txt_img)
+    image = image.convert('RGB')
+    return image
 
 def get_matrix_size(s):
   return int(s.split('x')[0])
@@ -230,6 +257,11 @@ def get_filters():
                         'test',
                         {'size':{'style':'dropdown',
                                  'values':['5x5']}}))
+  filters.append(Filter('watermark',
+                        'test',
+                        {'text':{'style':'text_box'},
+                        'font_size':{'style':'text_box'},
+                        'transparency':{'style':'text_box'}}))
   return filters
 
 if __name__ == '__main__':
