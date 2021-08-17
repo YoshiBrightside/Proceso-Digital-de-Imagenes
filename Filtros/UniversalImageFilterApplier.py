@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
-import filters as fl
+import filters as fl 
 import copy
 
 class UniversalImageFilterApplier:
@@ -116,7 +116,7 @@ class UniversalImageFilterApplier:
                 self.filter_options[o] = Text(self.option_frame, height='2', width='20')
                 self.filter_options[o].insert('end', o)
             if self.selected_filter.options[o]['style'] == 'spinbox':
-                self.filter_options[o] = Spinbox(self.option_frame, from_=0, to=255)
+                self.filter_options[o] = Spinbox(self.option_frame, from_=0, to=255)    
             self.filter_options[o].pack()
 
     def load_filters(self):

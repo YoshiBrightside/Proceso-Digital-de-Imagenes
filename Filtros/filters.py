@@ -1,5 +1,6 @@
 import copy
 from PIL import Image, ImageFont, ImageDraw
+import math
 
 class Filter:
   def __init__(self, name, description, options=None):
@@ -149,12 +150,9 @@ class Filter:
               new_value[0] += copy_arr[cur_pixel[0], cur_pixel[1]][0]*matrix[mx][my]
               new_value[1] += copy_arr[cur_pixel[0], cur_pixel[1]][1]*matrix[mx][my]
               new_value[2] += copy_arr[cur_pixel[0], cur_pixel[1]][2]*matrix[mx][my]
-        try:
-          arr[x, y] = (int(new_value[0]*factor)+bias,
-                      int(new_value[1]*factor)+bias,
-                      int(new_value[2]*factor)+bias)
-        except Exception:
-          print(arr[x, y], x, y)
+        arr[x, y] = (int(new_value[0]*factor)+bias,
+                     int(new_value[1]*factor)+bias,
+                     int(new_value[2]*factor)+bias)
     image.save('.temp.jpeg')
     return image
     
@@ -239,10 +237,56 @@ class Filter:
     text = options['texto']
     x, y = int(options['x']), int(options['y'])
     transparency = int(options['transparencia'])
-    font = ImageFont.truetype("Gidole-Regular.ttf", int(options['tamano']))
+    font = ImageFont.truetype(options['fuente'], int(options['tamano']))
     draw.text((x,y), text, font=font, fill=(255,255,255, transparency))
     image = Image.alpha_composite(image.convert('RGBA'), txt_img)
     image = image.convert('RGB')
+    return image
+
+  def recursivo(self, image, options=None):
+    '''
+    Filtro recursivo. Toma una imagen y devuelve una esta hecha con mosaicos
+    de si misma. Puede elegir entre grises y rgb, ademas de tamano de
+    mosaico.
+    '''
+    arr = image.load()
+    tamano_mosaico = get_matrix_size(options['tamano'])
+    imagen_mosaico = copy.deepcopy(image).resize((tamano_mosaico,tamano_mosaico))
+    arr_mos = imagen_mosaico.load()
+    mosaicos = [[[0, 0, 0] for _ in range(math.ceil(image.height/tamano_mosaico))]
+                           for _ in range(math.ceil(image.width/tamano_mosaico))]
+    pixeles_por_mosaico = [[0 for _ in range(len(mosaicos[0]))]
+                              for _ in range(len(mosaicos))]
+    # Primero obtenemos los valores promedio por mosaico
+    for x in range(image.width):
+      for y in range(image.height):
+        mosaicos[x//tamano_mosaico][y//tamano_mosaico][0] += arr[x, y][0]
+        mosaicos[x//tamano_mosaico][y//tamano_mosaico][1] += arr[x, y][1]
+        mosaicos[x//tamano_mosaico][y//tamano_mosaico][2] += arr[x, y][2]
+        pixeles_por_mosaico[x//tamano_mosaico][y//tamano_mosaico] += 1
+    for x in range(len(mosaicos)):
+      for y in range(len(mosaicos[0])):
+        mosaicos[x][y][0] //= pixeles_por_mosaico[x][y]
+        mosaicos[x][y][1] //= pixeles_por_mosaico[x][y]
+        mosaicos[x][y][2] //= pixeles_por_mosaico[x][y]
+    # Aplicamos a la imagen el valor del pixel del mosaico correspondiente
+    # mas el valor promedio del mosaico por si mismo
+    for x in range(image.width):
+      for y in range(image.height):
+        if options['tipo'] == 'escala_grises':
+          arr[x, y] = ((arr_mos[x%tamano_mosaico, y%tamano_mosaico][0] +
+                        mosaicos[x//tamano_mosaico][y//tamano_mosaico][0])//2,
+                        (arr_mos[x%tamano_mosaico, y%tamano_mosaico][0] +
+                        mosaicos[x//tamano_mosaico][y//tamano_mosaico][0])//2,
+                        (arr_mos[x%tamano_mosaico, y%tamano_mosaico][0] +
+                        mosaicos[x//tamano_mosaico][y//tamano_mosaico][0])//2)
+        else:
+          arr[x, y] = ((arr_mos[x%tamano_mosaico, y%tamano_mosaico][0] +
+                        mosaicos[x//tamano_mosaico][y//tamano_mosaico][0])//2,
+                        (arr_mos[x%tamano_mosaico, y%tamano_mosaico][1] +
+                        mosaicos[x//tamano_mosaico][y//tamano_mosaico][1])//2,
+                        (arr_mos[x%tamano_mosaico, y%tamano_mosaico][2] +
+                        mosaicos[x//tamano_mosaico][y//tamano_mosaico][2])//2)
     return image
 
 def get_matrix_size(s):
@@ -307,11 +351,19 @@ def get_filters():
                         'tamano':{'style':'text_box'},
                         'transparencia':{'style':'text_box'},
                         'x':{'style':'text_box'},
-                        'y':{'style':'text_box'}}))
-  filters.append(Filter('recursive',
-                        'test_description',
-                        {'size':{'style':'dropdown',
-                                 'values':['10x10','20x20','30x30']}}))
+                        'y':{'style':'text_box'},
+                        'fuente':{'style':'dropdown',
+                                  'values':['Gidole-Regular.ttf',
+                                            'Albertus.ttf',
+                                            'Avengers.ttf',
+                                            'modes.ttf',
+                                            'Prompt-Medium.ttf']}}))
+  filters.append(Filter('recursivo',
+                        'descripcion_prueba',
+                        {'tipo':{'style':'dropdown',
+                                 'values':['escala_grises','color']},
+                         'tamano':{'style':'dropdown',
+                                   'values':['5x5','10x10','20x20','30x30']}}))
   return filters
 
 if __name__ == '__main__':
