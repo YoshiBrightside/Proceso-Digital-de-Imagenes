@@ -19,7 +19,7 @@ class Filter:
       return image
     modded_image = method(self, image, options)
     if modded_image != None:
-      modded_image.save('.temp.jpeg')
+      modded_image.save('.temp.jpeg', quality=100)
 
   def gray_tone(self, image, options={'filter_type':'RGB'}):
     '''
@@ -331,6 +331,46 @@ class Filter:
           arr[x, y] = (0, 0, 0)
     return image
 
+  def minimo(self, image, options=None):
+    '''
+    A partir del tamanio de la matriz, se busca en la vecindad el pixel con
+    el valor mas blanco, y se escribe sobre el pixel central.
+    '''
+    copia_imagen = copy.deepcopy(image)
+    arr = image.load()
+    copy_arr = copia_imagen.load()
+    tamano_mosaico = get_matrix_size(options['tamano'])
+    for x in range(image.width):
+      for y in range(image.height):
+        tono = 0
+        for i in range(x-tamano_mosaico//2, x+tamano_mosaico//2):
+          for j in range(y-tamano_mosaico//2, y+tamano_mosaico//2):
+            if i > 0 and i < image.width and j > 0 and j < image.height:
+              tono = max(((copy_arr[i, j][0] + copy_arr[i, j][1] + copy_arr[i, j][2])//3),
+                          tono)
+        arr[x, y] = (tono, tono, tono)
+    return image
+
+
+  def maximo(self, image, options=None):
+    '''
+    A partir del tamanio de la matriz, se busca en la vecindad el pixel con
+    el valor mas oscuro, y se escribe sobre el pixel central.
+    '''
+    copia_imagen = copy.deepcopy(image)
+    arr = image.load()
+    copy_arr = copia_imagen.load()
+    tamano_mosaico = get_matrix_size(options['tamano'])
+    for x in range(image.width):
+      for y in range(image.height):
+        tono = 255
+        for i in range(x-tamano_mosaico//2, x+tamano_mosaico//2):
+          for j in range(y-tamano_mosaico//2, y+tamano_mosaico//2):
+            if i > 0 and i < image.width and j > 0 and j < image.height:
+              tono = min(((copy_arr[i, j][0] + copy_arr[i, j][1] + copy_arr[i, j][2])//3),
+                          tono)
+        arr[x, y] = (tono, tono, tono)
+    return image
 
 def get_matriz_idx(s):
   '''
@@ -436,6 +476,20 @@ def get_filters():
                                  'values':['img2.idx',
                                            'img4.idx',
                                            'img10.idx']}}))
+  filters.append(Filter('minimo',
+                        '',
+                        {'tamano':{'style':'dropdown',
+                                 'values':['3x3',
+                                           '5x5',
+                                           '7x7',
+                                           '9x9']}}))
+  filters.append(Filter('maximo',
+                        '',
+                        {'tamano':{'style':'dropdown',
+                                 'values':['3x3',
+                                           '5x5',
+                                           '7x7',
+                                           '9x9']}}))
   return filters
 
 if __name__ == '__main__':

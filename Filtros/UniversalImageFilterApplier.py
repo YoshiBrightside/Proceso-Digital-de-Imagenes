@@ -135,7 +135,7 @@ class UniversalImageFilterApplier:
         self.left_image = image
         self.anti_trash_system[0] = ImageTk.PhotoImage(image.resize((self.left_canvas.winfo_width(),self.left_canvas.winfo_height()), Image.ANTIALIAS))
         self.left_canvas.itemconfigure(self.left_image_changer, image = self.anti_trash_system[0])
-        self.left_image.save('.temp.jpeg')
+        self.left_image.save('.temp.jpeg', quality=100)
 
     def reset_image(self):
         self.open_image(self.left_image.filename)
@@ -174,7 +174,7 @@ class UniversalImageFilterApplier:
             mode='w',
             defaultextension=".jpeg"
         )
-        self.right_image.save(name)
+        self.right_image.save(name, quality=100)
 
 def main():
     UIFA = UniversalImageFilterApplier()
